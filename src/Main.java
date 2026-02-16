@@ -48,7 +48,9 @@ public class Main {
         do {
 
             // Opciones del menu
+            System.out.println("\n" + "=" .repeat(50));
             System.out.println("\n*** SISTEMA DE EMERGENCIAS***");
+            System.out.println("=".repeat(50));
             System.out.println("1. Emergencia");
             System.out.println("2. Enviar alerta Manual");
             System.out.println("3. Notificar contactos");
@@ -123,6 +125,10 @@ public class Main {
                         System.out.println("Umbral muy alto ");
                     }
                     break;
+                } case 6:{
+                    gestionarPerfilMedico(sc, user.getPerfilMedico());
+                    break;
+
                 }
                 case 6:{
                     gestionarPerfilMedico(sc, user.getPerfilMedico());
