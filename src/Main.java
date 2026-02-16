@@ -4,13 +4,36 @@ import com.emergencias.detector.EmergencyDetector;
 import com.emergencias.model.EmergencyEvent;
 import com.emergencias.model.Ubicacion;
 import com.emergencias.model.UserData;
+import com.emergencias.model.PerfilMedico;
+import com.emergencias.model.CentroSalud;
+import com.emergencias.services.GestorCentrosSalud;
 
+import java.sql.SQLOutput;
 import java.util.Scanner;
+import java.util.ArrayList;
 // Clase principal que ejecuta el sistema de gestion de emergencia.
 
 public class Main {
+    private static GestorCentrosSalud gestorCentros;
+    // Variable global para el gestor de centros
     public static void main(String[] args) {
         Scanner sc = new Scanner(System.in);
+
+        // Inicializar gestor de centros de salud
+        gestorCentros = new GestorCentrosSalud();
+
+        // Cargar datos desde el archivo JSON
+        System.out.println("Cargando centos de Salud...");
+
+        // Intentar diferentes rutas posibles
+        boolean cargado = gestorCentros.cargarDesdeJSON("src/com/emergencias/data/centros_salud.json");
+
+        if (cargado) {
+            System.out.println(" Centros de salud cargados correctamente");
+        } else {
+            System.out.println(" No se pudo cargar el archivo JSON");
+        }
+
 
         UserData user = new UserData("Maria" , "678524080");// Inicializacion datos de usuario por defecto
 
@@ -31,6 +54,8 @@ public class Main {
             System.out.println("3. Notificar contactos");
             System.out.println("4. Cambiar datos de usuario");
             System.out.println("5. Umbral de gravedad");
+            System.out.println("6. Perfil medico ");
+            System.out.println("7. Menu centros de Salud");
             System.out.println("0. Salir");
             System.out.println("Seleccione Opcion: ");
 
@@ -99,6 +124,15 @@ public class Main {
                     }
                     break;
                 }
+                case 6:{
+                    gestionarPerfilMedico(sc, user.getPerfilMedico());
+                    break;
+                }
+                case 7:{
+                    // Menu de centros de salud
+                    menuCentrosSalud(sc, detector.getUbicacionInicial());
+                    break;
+                }
                 case 0:
                     System.out.println("Saliendo ......");
                     break;
@@ -112,4 +146,107 @@ public class Main {
 
 
     }
+    // Nuevo menu para gestionar los centros de salud
+    private static void menuCentrosSalud(Scanner sc, Ubicacion ubicacionActual) {
+        int opcion;
+        do {
+            System.out.println("\n" + "=".repeat(50));
+            System.out.println("  CENTROS DE SALUD");
+            System.out.println("=".repeat(50));
+            System.out.println("1. Buscar centro más cercano");
+            System.out.println("2. Ver centros cercanos (5 más próximos)");
+            System.out.println("3. Buscar por municipio");
+            System.out.println("4. Buscar por nombre");
+            System.out.println("5. Ver todos los centros");
+            System.out.println("0. Volver");
+            System.out.println("=".repeat(50));
+            System.out.print("Seleccione Opción: ");
+
+            while (!sc.hasNextInt()) {
+                System.out.println(" Entrada inválida");
+                sc.next();
+            }
+            opcion = sc.nextInt();
+            sc.nextLine();
+
+            switch (opcion) {
+                case 1: {
+                    CentroSalud cercano = gestorCentros.encontrarMasCercano(ubicacionActual);
+                    if (cercano != null) {
+                        cercano.mostrarInfo();
+                        double distancia = cercano.calcularDistancia(ubicacionActual);
+                        System.out.printf("📏 Distancia: %.2f km\n", distancia);
+                    } else {
+                        System.out.println(" No se encontraron centros");
+                    }
+                    break;
+                }
+
+                case 2: {
+                    ArrayList<CentroSalud> cercanos =
+                            gestorCentros.obtenerCentrosCercanos(ubicacionActual, 5);
+
+                    System.out.println("\n 5 CENTROS MÁS CERCANOS:");
+                    for (int i = 0; i < cercanos.size(); i++) {
+                        CentroSalud centro = cercanos.get(i);
+                        double distancia = centro.calcularDistancia(ubicacionActual);
+                        System.out.printf("\n%d. %s - %s\n",
+                                (i + 1), centro.getNombre(), centro.getMunicipio());
+                        System.out.printf("   📏 %.2f km |  %s\n",
+                                distancia, centro.getTelefono());
+                    }
+                    break;
+                }
+
+                case 3: {
+                    System.out.print("Nombre del municipio: ");
+                    String municipio = sc.nextLine();
+                    ArrayList<CentroSalud> resultados =
+                            gestorCentros.buscarPorMunicipio(municipio);
+
+                    if (resultados.isEmpty()) {
+                        System.out.println(" No se encontraron centros en " + municipio);
+                    } else {
+                        System.out.println("\n Centros en " + municipio + ":");
+                        for (CentroSalud centro : resultados) {
+                            System.out.println("  • " + centro);
+                        }
+                    }
+                    break;
+                }
+
+                case 4: {
+                    System.out.print("Nombre del centro: ");
+                    String nombre = sc.nextLine();
+                    ArrayList<CentroSalud> resultados =
+                            gestorCentros.buscarPorNombre(nombre);
+
+                    if (resultados.isEmpty()) {
+                        System.out.println(" No se encontraron centros");
+                    } else {
+                        for (CentroSalud centro : resultados) {
+                            centro.mostrarInfo();
+                        }
+                    }
+                    break;
+                }
+
+                case 5:
+                    gestorCentros.mostrarTodos();
+                    break;
+
+                case 0:
+                    System.out.println("← Volviendo...");
+                    break;
+
+                default:
+                    System.out.println(" Opción incorrecta");
+            }
+        } while (opcion != 0);
+    }
+
+    private static void gestionarPerfilMedico(Scanner sc, PerfilMedico perfil) {
+        // (Código anterior del perfil médico...)
+    }
+
 }
