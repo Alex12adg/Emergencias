@@ -1,117 +1,86 @@
 package com.emergencias.services;
 
-
 import com.emergencias.model.CentroSalud;
 import com.emergencias.model.Ubicacion;
-import jdk.internal.icu.text.UnicodeSet;
+
 import org.json.JSONArray;
 import org.json.JSONObject;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
+
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
 import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.stream.Collectors;
 
-
-
-// Gestor para cargar y buscar centros de salud desde un archivo JSON
+/**
+ * Gestor para cargar y buscar centros de salud desde un archivo JSON
+ */
 public class GestorCentrosSalud {
+
     private ArrayList<CentroSalud> centros;
 
     public GestorCentrosSalud() {
         this.centros = new ArrayList<>();
     }
 
-
-
-
-
-// Cargar los centros de salud desde un archivo JSON
-
-    public boolean cargarDesdeJSON(String nombreRecurso) {
+    // Cargar los centros de salud desde un archivo JSON
+    public boolean cargarDesdeJSON(String rutaArchivo) {
 
         try {
-            InputStream is = getClass()
-                    .getClassLoader()
-                    .getResourceAsStream(nombreRecurso);
 
-            if (is == null) {
-                System.out.println("No se encontró el recurso: " + nombreRecurso);
+            File archivo = new File(rutaArchivo);
+
+            if (!archivo.exists()) {
+                System.out.println("No se encontró el archivo: " + rutaArchivo);
                 return false;
             }
 
-            String contenido = new String(
-                    is.readAllBytes(),
-                    StandardCharsets.UTF_8
-            );
+            // Leer todo el archivo como texto
+            StringBuilder contenido = new StringBuilder();
+            BufferedReader br = new BufferedReader(new FileReader(archivo));
 
-            JSONArray jsonArray = new JSONArray(contenido);
-
-            this.centros.clear();
-
-            for (int i = 0; i < jsonArray.length(); i++) {
-                JSONObject obj = jsonArray.getJSONObject(i);
-
-                CentroSalud centro = new CentroSalud();
-                centro.setCodigo(obj.optString("Código", ""));
-                centro.setNombre(obj.optString("Nombre", ""));
-                centro.setDireccion(obj.optString("Dirección", ""));
-                centro.setCodigoPostal(obj.optString("C.P.", ""));
-                centro.setMunicipio(obj.optString("Municipio", ""));
-                centro.setPedania(obj.optString("Pedanía", ""));
-                centro.setTelefono(obj.optString("Teléfono", ""));
-                centro.setEmail(obj.optString("Email", ""));
-
-                double lat = parseCoordinate(obj.optString("Latitud", "0"));
-                double lon = parseCoordinate(obj.optString("Longitud", "0"));
-
-                centro.setLatitud(lat);
-                centro.setLongitud(lon);
-
-                this.centros.add(centro);
+            String linea;
+            while ((linea = br.readLine()) != null) {
+                contenido.append(linea);
             }
 
-            System.out.println("✓ Centros cargados: " + centros.size());
+            br.close();
+
+            // Convertir texto a JSONArray
+            JSONArray jsonArray = new JSONArray(contenido.toString());
+
+            // Vaciar lista anterior por seguridad
+            centros.clear();
+
+            // Recorrer cada objeto del array
+            for (int i = 0; i < jsonArray.length(); i++) {
+
+                JSONObject obj = jsonArray.getJSONObject(i);
+
+                // Crear objeto CentroSalud manualmente
+                CentroSalud centro = new CentroSalud();  // usar constructor vacío
+
+                centro.setNombre(obj.getString("nombre"));
+                centro.setMunicipio(obj.getString("municipio"));
+                centro.setDireccion(obj.getString("direccion"));
+                centro.setTelefono(obj.getString("telefono"));
+                centro.setLatitud(obj.getDouble("latitud"));
+                centro.setLongitud(obj.getDouble("longitud"));
+
+                centros.add(centro);
+            }
+
+            System.out.println("Se cargaron " + centros.size() + " centros de salud");
             return true;
 
         } catch (Exception e) {
-            System.out.println("Error cargando JSON: " + e.getMessage());
+            System.out.println("Error al cargar el JSON: " + e.getMessage());
             return false;
         }
     }
 
-
-    // Convierte las coordenadas en diferentes formatos
-    private double parseCoordinate(String coord) {
-        if (coord == null || coord.isEmpty()) return 0.0;
-
-        try {
-            // Si empieza con "-", es formato decimal
-            if (coord.startsWith("-")) {
-                return Double.parseDouble(coord);
-            }
-
-            // Si es un número grande (formato UTM), convertir
-            double value = Double.parseDouble(coord);
-            if (value > 360) {
-                // Coordenadas UTM - conversión aproximada
-                return value / 100000.0;
-            }
-
-            return value;
-        } catch (Exception e) {
-            return 0.0;
-        }
-
-
-    }
-
     // Busca centros de Salud por municipio
     public ArrayList<CentroSalud> buscarPorMunicipio(String municipio) {
+
         ArrayList<CentroSalud> resultados = new ArrayList<>();
 
         for (CentroSalud centro : centros) {
@@ -119,11 +88,13 @@ public class GestorCentrosSalud {
                 resultados.add(centro);
             }
         }
+
         return resultados;
     }
 
     // Buscar centro de salud por nombre
     public ArrayList<CentroSalud> buscarPorNombre(String nombre) {
+
         ArrayList<CentroSalud> resultados = new ArrayList<>();
 
         for (CentroSalud centro : centros) {
@@ -135,16 +106,16 @@ public class GestorCentrosSalud {
         return resultados;
     }
 
-// Encuentra el centro de salud más cercano por ubicacion
-
+    // Encuentra el centro de salud más cercano por ubicacion
     public CentroSalud encontrarMasCercano(Ubicacion ubicacion) {
+
         if (centros.isEmpty()) return null;
 
         CentroSalud masCercano = null;
         double distanciaMinima = Double.MAX_VALUE;
 
         for (CentroSalud centro : centros) {
-            // Saltar centros sin coordenadas válidas
+
             if (centro.getLatitud() == 0.0 && centro.getLongitud() == 0.0) {
                 continue;
             }
@@ -159,38 +130,37 @@ public class GestorCentrosSalud {
 
         return masCercano;
     }
-// Obten los N centros mas cercanos a una ubicación
 
+    // Obtiene los N centros más cercanos a una ubicación
     public ArrayList<CentroSalud> obtenerCentrosCercanos(Ubicacion ubicacion, int cantidad) {
-        ArrayList<CentroSalud> centrosConDistancia = new ArrayList<>();
 
-        // Filtrar centros con coordenadas válidas
-        for (CentroSalud centro : centros) {
-            if (centro.getLatitud() != 0.0 || centro.getLongitud() != 0.0) {
-                centrosConDistancia.add(centro);
-            }
+        ArrayList<CentroSalud> copia = new ArrayList<>(centros);
+
+        // Ordenar por distancia (método simple compatible)
+        copia.sort((c1, c2) -> {
+            double d1 = c1.calcularDistancia(ubicacion);
+            double d2 = c2.calcularDistancia(ubicacion);
+            return Double.compare(d1, d2);
+        });
+
+        ArrayList<CentroSalud> resultado = new ArrayList<>();
+
+        for (int i = 0; i < copia.size() && i < cantidad; i++) {
+            resultado.add(copia.get(i));
         }
 
-        // Ordenar por distancia
-        centrosConDistancia.sort((c1, c2) ->
-                Double.compare(c1.calcularDistancia(ubicacion),
-                        c2.calcularDistancia(ubicacion))
-        );
-
-        // Retornar solo los primeros N
-        int limite = Math.min(cantidad, centrosConDistancia.size());
-        return new ArrayList<>(centrosConDistancia.subList(0, limite));
+        return resultado;
     }
 
-//Muestra todos los centro cargados
-
+    // Muestra todos los centros cargados
     public void mostrarTodos() {
+
         if (centros.isEmpty()) {
-            System.out.println(" No hay centros de salud cargados");
+            System.out.println("No hay centros de salud cargados");
             return;
         }
 
-        System.out.println("\n CENTROS DE SALUD DISPONIBLES (" + centros.size() + ")");
+        System.out.println("\nCENTROS DE SALUD DISPONIBLES (" + centros.size() + ")");
         System.out.println("=".repeat(80));
 
         for (int i = 0; i < centros.size(); i++) {
@@ -200,21 +170,10 @@ public class GestorCentrosSalud {
                     centro.getNombre(),
                     centro.getMunicipio());
         }
-
     }
-
-// Obtiene el total de centros cargados
 
     public int getTotalCentros() {
         return centros.size();
-    }
-
-    // Obtiene el centro por su indice
-    public CentroSalud getCentro(int indice) {
-        if (indice >= 0 && indice < centros.size()) {
-            return centros.get(indice);
-        }
-        return null;
     }
 }
 

@@ -26,7 +26,9 @@ public class Main {
         System.out.println("Cargando centos de Salud...");
 
         // Intentar diferentes rutas posibles
-        boolean cargado = gestorCentros.cargarDesdeJSON("src/com/emergencias/data/centros_salud.json");
+        boolean cargado = gestorCentros.cargarDesdeJSON(
+                "src/com/emergencias/data/centros_salud.json"
+        );
 
         if (cargado) {
             System.out.println(" Centros de salud cargados correctamente");
@@ -130,11 +132,11 @@ public class Main {
                     break;
 
                 }
-                case 6:{
+                case 7:{
                     gestionarPerfilMedico(sc, user.getPerfilMedico());
                     break;
                 }
-                case 7:{
+                case 8:{
                     // Menu de centros de salud
                     menuCentrosSalud(sc, detector.getUbicacionInicial());
                     break;
