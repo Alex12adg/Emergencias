@@ -6,7 +6,8 @@ import com.emergencias.model.Ubicacion;
 import jdk.internal.icu.text.UnicodeSet;
 import org.json.JSONArray;
 import org.json.JSONObject;
-
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -31,19 +32,27 @@ public class GestorCentrosSalud {
 
 // Cargar los centros de salud desde un archivo JSON
 
-    public boolean cargarDesdeJSON(String rutaArchivo) {
+    public boolean cargarDesdeJSON(String nombreRecurso) {
 
-        // Leer el contenido del archivo
         try {
-            String contenido = new String(Files.readAllBytes(Paths.get(rutaArchivo)));
+            InputStream is = getClass()
+                    .getClassLoader()
+                    .getResourceAsStream(nombreRecurso);
 
-            //"./src/com/emergencias/data/centros_salud.json"
+            if (is == null) {
+                System.out.println("No se encontró el recurso: " + nombreRecurso);
+                return false;
+            }
 
-            // Parsear JSON
+            String contenido = new String(
+                    is.readAllBytes(),
+                    StandardCharsets.UTF_8
+            );
+
             JSONArray jsonArray = new JSONArray(contenido);
 
-            // Procesar cada centro de salud
             this.centros.clear();
+
             for (int i = 0; i < jsonArray.length(); i++) {
                 JSONObject obj = jsonArray.getJSONObject(i);
 
@@ -57,36 +66,24 @@ public class GestorCentrosSalud {
                 centro.setTelefono(obj.optString("Teléfono", ""));
                 centro.setEmail(obj.optString("Email", ""));
 
-                // Parsear coordenadas (pueden venir en diferentes formatos)
-                try {
-                    String latStr = obj.optString("Latitud", "0");
-                    String lonStr = obj.optString("Longitud", "0");
+                double lat = parseCoordinate(obj.optString("Latitud", "0"));
+                double lon = parseCoordinate(obj.optString("Longitud", "0"));
 
-                    // Convertir coordenadas
-                    double lat = parseCoordinate(latStr);
-                    double lon = parseCoordinate(lonStr);
-
-                    centro.setLatitud(lat);
-                    centro.setLongitud(lon);
-                } catch (Exception e) {
-                    centro.setLatitud(0.0);
-                    centro.setLongitud(0.0);
-                }
+                centro.setLatitud(lat);
+                centro.setLongitud(lon);
 
                 this.centros.add(centro);
             }
 
-            System.out.println("✓ Se cargaron " + centros.size() + " centros de salud");
+            System.out.println("✓ Centros cargados: " + centros.size());
             return true;
 
-        } catch (IOException e) {
-            System.out.println(" Error al leer el archivo: " + e.getMessage());
-            return false;
         } catch (Exception e) {
-            System.out.println(" Error al procesar JSON: " + e.getMessage());
+            System.out.println("Error cargando JSON: " + e.getMessage());
             return false;
         }
     }
+
 
     // Convierte las coordenadas en diferentes formatos
     private double parseCoordinate(String coord) {
